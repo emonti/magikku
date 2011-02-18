@@ -1,6 +1,8 @@
 require 'ffi'
 require 'ffi/libmagic'
+
 require 'magic/flags'
+require 'magic/convenience'
 
 class Magic
   # Returns the default magic database path.
