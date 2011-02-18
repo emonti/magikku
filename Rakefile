@@ -5,11 +5,12 @@ begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
     gem.name = "ruby-magic"
-    gem.summary = %Q{TODO: one-line summary of your gem}
-    gem.description = %Q{TODO: longer description of your gem}
+    gem.summary = "Ruby bindings for the libmagic(3) library"
+    gem.description = "Ruby bindings for the libmagic(3) library"
     gem.email = "esmonti@gmail.com"
     gem.homepage = "http://github.com/emonti/ruby-magic"
     gem.authors = ["Eric Monti"]
+    gem.add_dependency "ffi", ">= 0.5.0"
     gem.add_development_dependency "rspec", ">= 1.2.9"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
