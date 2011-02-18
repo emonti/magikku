@@ -79,24 +79,39 @@ shared_examples_for "Magic compiling interface" do
       c=nil
       lambda { 
         c=@klass.new(:flags => @klass::Flags::NONE, :db => @testrule) 
-      }.should_not raise_error
+      }.should_not raise_error  
       c.close if c
     end
 
 
-    it "should raise an error when incorrect arguments are given" do
+    it "should raise an error when incorrect argument types are given" do
       c=nil
       lambda { c=@klass.new(nil) }.should_not raise_error()
       c.close if c
       c=nil
-      lambda { c=@klass.new(Object.new) }.should raise_error()
+      lambda { c=@klass.new(Object.new) }.should raise_error(TypeError)
       c.close if c
+    end
+
+
+    it "should raise an error when the wrong argument count is given" do
       c=nil
-      lambda { c=@klass.new(Object.new,Object.new) }.should raise_error()
+      lambda { c=@klass.new(Hash.new,Object.new) }.should raise_error(ArgumentError)
       c.close if c
+    end
+
+    it "should raise an error when a nonexistant magic file is given" do
       c=nil
       lambda { 
         c=@klass.new(:db => sample_file('totallybogus')) 
+      }.should raise_error(@klass::DbLoadError)
+      c.close if c
+    end
+
+    it "should raise an error when a magic file format error occurs" do
+      c=nil
+      lambda { 
+        c=@klass.new(:db => sample_file('fail_magicrules')) 
       }.should raise_error(@klass::DbLoadError)
       c.close if c
     end
