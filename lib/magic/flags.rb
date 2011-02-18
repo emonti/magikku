@@ -1,4 +1,6 @@
 class Magic
+  # Defines various flags that can be passed when creating a magic scan object
+  # using Magic.new or afterwards using Magic.flags=
   module Flags
     NONE              =0x000000 # No flags
     DEBUG             =0x000001 # Turn on debugging
