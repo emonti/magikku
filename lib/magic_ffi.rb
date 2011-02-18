@@ -106,7 +106,8 @@ class Magic
     end
   end
 
-  # Can be used to compile magic files. 
+  # Can be used to compile magic files. This does not load files, however. You must
+  # use dbload for that.
   #
   # Note: Errors and warnings may be displayed on stderr.
   #

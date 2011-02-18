@@ -20,11 +20,11 @@ describe Magic do
       Dir.chdir @origdir
     end
 
-    it "should compile rules using the Magic.compile() convenience method" do
+    it "should work using the Magic.compile() convenience method" do
       Magic.compile(@testrule)
     end
 
-    it "should compile rules from a Magic object" do
+    it "should work using an instantiated Magic object" do
       m=Magic.new
       m.compile(@testrule).should == true
       m.close
