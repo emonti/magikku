@@ -10,7 +10,6 @@ begin
     gem.email = "esmonti@gmail.com"
     gem.homepage = "http://github.com/emonti/ruby-magic"
     gem.authors = ["Eric Monti"]
-    gem.add_dependency "ffi", ">= 0.5.0"
     gem.add_development_dependency "rspec", ">= 1.2.9"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
