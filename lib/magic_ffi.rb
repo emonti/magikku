@@ -82,7 +82,7 @@ class Magic
   #   One or more filenames seperated by colons. If nil, the default database
   #   is loaded.
   #   If uncompiled magic files are specified, they are compiled on the fly
-  #   but they do not generated .mgc files as with the compile method.
+  #   but they do not generate new .mgc files as with the compile method.
   #   Multiple files be specified by seperating them with colons.
   #
   # @raise [DbLoadError] if an error occurred loading the database(s)
