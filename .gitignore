@@ -20,4 +20,6 @@ pkg
 
 ## PROJECT::SPECIFIC
 *.gemspec
-
+*.so
+*.bundle
+tmp/
