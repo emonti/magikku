@@ -31,7 +31,13 @@ Spec::Rake::SpecTask.new(:rcov) do |spec|
   spec.rcov = true
 end
 
-task :spec => :check_dependencies
+require 'rake/extensiontask'
+Rake::ExtensionTask.new("magic_native")
+
+CLEAN.include("lib/*.bundle")
+CLEAN.include("lib/*.so")
+
+task :spec => [:check_dependencies, :compile]
 
 task :default => :spec
 
@@ -47,4 +53,5 @@ end
 
 require 'yard'
 YARD::Rake::YardocTask.new
+
 
