@@ -1,60 +1,112 @@
 require 'ffi'
 require 'ffi/libmagic'
 
-require 'magic/flags'
 require 'magic/convenience'
 
 # Note the implementation of this class may either be via FFI
 # or via native C bindings depending on your installation and
 # what version of ruby you are using.
-class Magic
+class MagicFFI
+  extend MagicHelpers
+
+  # Defines various flags that can be passed when creating a magic scan object
+  # using Magic.new or afterwards using Magic.flags=
+  module Flags
+    NONE              =0x000000 # No flags
+    DEBUG             =0x000001 # Turn on debugging
+    SYMLINK           =0x000002 # Follow symlinks
+    COMPRESS          =0x000004 # Check inside compressed files
+    DEVICES           =0x000008 # Look at the contents of devices
+    MIME_TYPE         =0x000010 # Return the MIME type
+    CONTINUE          =0x000020 # Return all matches
+    CHECK             =0x000040 # Print warnings to stderr
+    PRESERVE_ATIME    =0x000080 # Restore access time on exit
+    RAW               =0x000100 # Don't translate unprintable chars
+    ERROR             =0x000200 # Handle ENOENT etc as real errors
+    MIME_ENCODING     =0x000400 # Return the MIME encoding
+    MIME              =(MIME_TYPE|MIME_ENCODING) # alias for (MAGIC_MIME_TYPE|MAGIC_MIME_ENCODING)
+    APPLE             =0x000800 # Return the Apple creator and type
+    NO_CHECK_COMPRESS =0x001000 # Don't check for compressed files
+    NO_CHECK_TAR      =0x002000 # Don't check for tar files
+    NO_CHECK_SOFT     =0x004000 # Don't check magic entries
+    NO_CHECK_APPTYPE  =0x008000 # Don't check application type
+    NO_CHECK_ELF      =0x010000 # Don't check for elf details
+    NO_CHECK_TEXT     =0x020000 # Don't check for text files
+    NO_CHECK_CDF      =0x040000 # Don't check for cdf files
+    NO_CHECK_TOKENS   =0x100000 # Don't check tokens
+    NO_CHECK_ENCODING =0x200000 # Don't check text encodings
+
+    NO_CHECK_ASCII   = NO_CHECK_TEXT # alias for NO_CHECK_TEXT
+  end
+
   # Returns the default magic database path.
   def self.path
     FFI::Libmagic.magic_getpath(nil, 0)
   end
 
+  # A base class for other Magic error types
+  class MagicError < StandardError
+  end
+
   # Raised when an error occurs during loading of a magic database.
-  class DbLoadError < StandardError
+  class DbLoadError < MagicError
   end
 
   # Raised when an unexpected fatal error occurs initializing libmagic
-  class InitFatal < StandardError
+  class InitFatal < MagicError
   end
 
   # Raised when an error occurs during compiling of a magic database.
-  class CompileError < StandardError
+  class CompileError < MagicError
   end
 
   # Raised when an error occurs when setting flags on a Magic object.
-  class FlagError < StandardError
+  class FlagError < MagicError
+  end
+
+  # Raised when an error occurs when setting flags on a Magic object.
+  class ClosedError < MagicError
   end
 
   # Initializes a new libmagic data scanner
   #
-  # @param [Fixnum,nil] flags
-  #   Optional flags to magic (see Magic::Flags). 
+  # @param [Hash,nil] params
+  #   A hash of parameters or nil for defaults.
+  #
+  # @option params [Fixnum,nil] :flags
+  #   Optional flags to magic (see MagicFFI::Flags). 
   #   The flag values should be 'or'ed to gether with '|'. 
   #   Default: NONE
   #
-  # @param [String, nil] magicfiles
+  # @option params [String, nil] :db
   #   Optional magicfile databases or un-compiled magic files.
   #   Default: the default system magic.mgc file.
   #
-  # @see See Magic::Flags and libmagic(3) manpage
+  # @see See MagicFFI::Flags and libmagic(3) manpage
   # @see dbload()
-  def initialize(flags=nil, magicfiles=nil)
-    flags ||= Magic::Flags::NONE
+  def initialize(param = nil)
+    param ||= {}
+    flags = param[:flags] || Flags::NONE
+    raise (TypeError, "Invalid Type for paramter") if not flags.kind_of?(Fixnum)
+    magicfiles = param[:db]
     @_cookie = FFI::Libmagic.magic_open(flags)
     if @_cookie.null?
       raise(InitFatal, "magic_open(#{flags}) returned a null pointer")
     end
 
-    dbload(nil)
+    dbload(magicfiles)
   end
 
   # Close the libmagic data scanner handle when you are finished with it
   def close
-    FFI::Libmagic.magic_close(@_cookie)
+    FFI::Libmagic.magic_close(@_cookie) unless @closed
+
+    @closed = true
+    return nil
+  end
+
+  def closed?
+    (@closed == true)
   end
 
   # Analyzes file contents against the magicfile database
@@ -80,7 +132,6 @@ class Magic
     FFI::Libmagic.magic_buffer(@_cookie, p, str.size)
   end
 
-
   # Used to load one or more magic databases.
   # 
   # @param magicfiles
@@ -93,7 +144,7 @@ class Magic
   # @raise [DbLoadError] if an error occurred loading the database(s)
   def dbload(magicfiles)
     if FFI::Libmagic.magic_load(@_cookie, magicfiles) != 0
-      raise(DbLoadError, "Error loading db: #{magicfiles}" << lasterror())
+      raise(DbLoadError, "Error loading db: #{magicfiles.inspect} " << lasterror())
     else
       return true
     end
@@ -102,7 +153,7 @@ class Magic
   # Sets flags for the magic analyzer handle.
   #
   # @param flags
-  #   Flags to to set for magic. See Magic::Flags and libmagic(3) manpage. 
+  #   Flags to to set for magic. See MagicFFI::Flags and libmagic(3) manpage. 
   #   The flag values should be 'or'ed together with '|'. 
   #   Using 0 will clear all flags.
   def flags=(flags)
@@ -128,7 +179,7 @@ class Magic
   # @raise [CompileError] if an error occurred.
   def compile(filenames)
     if FFI::Libmagic.magic_compile(@_cookie, filenames) != 0
-      raise(CompileError, "Error compiling #{filenames.inspect}:" << lasterror())
+      raise(CompileError, "Error compiling #{filenames.inspect}: " << lasterror())
     else
       return true
     end
@@ -150,6 +201,12 @@ class Magic
   end
 
   private
+    def _check_closed
+      if @closed
+        raise(ClosedError, "This magic cookie is closed and can no longer be used")
+      end
+    end
+
     def lasterror
       FFI::Libmagic.magic_error(@_cookie)
     end
