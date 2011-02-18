@@ -4,6 +4,9 @@ require 'ffi/libmagic'
 require 'magic/flags'
 require 'magic/convenience'
 
+# Note the implementation of this class may either be via FFI
+# or via native C bindings depending on your installation and
+# what version of ruby you are using.
 class Magic
   # Returns the default magic database path.
   def self.path
