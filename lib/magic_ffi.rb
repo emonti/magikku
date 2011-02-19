@@ -12,31 +12,77 @@ class MagicFFI
   # Defines various flags that can be passed when creating a magic scan object
   # using Magic.new or afterwards using Magic.flags=
   module Flags
-    NONE              =0x000000 # No flags
-    DEBUG             =0x000001 # Turn on debugging
-    SYMLINK           =0x000002 # Follow symlinks
-    COMPRESS          =0x000004 # Check inside compressed files
-    DEVICES           =0x000008 # Look at the contents of devices
-    MIME_TYPE         =0x000010 # Return the MIME type
-    CONTINUE          =0x000020 # Return all matches
-    CHECK             =0x000040 # Print warnings to stderr
-    PRESERVE_ATIME    =0x000080 # Restore access time on exit
-    RAW               =0x000100 # Don't translate unprintable chars
-    ERROR             =0x000200 # Handle ENOENT etc as real errors
-    MIME_ENCODING     =0x000400 # Return the MIME encoding
-    MIME              =(MIME_TYPE|MIME_ENCODING) # alias for (MAGIC_MIME_TYPE|MAGIC_MIME_ENCODING)
-    APPLE             =0x000800 # Return the Apple creator and type
-    NO_CHECK_COMPRESS =0x001000 # Don't check for compressed files
-    NO_CHECK_TAR      =0x002000 # Don't check for tar files
-    NO_CHECK_SOFT     =0x004000 # Don't check magic entries
-    NO_CHECK_APPTYPE  =0x008000 # Don't check application type
-    NO_CHECK_ELF      =0x010000 # Don't check for elf details
-    NO_CHECK_TEXT     =0x020000 # Don't check for text files
-    NO_CHECK_CDF      =0x040000 # Don't check for cdf files
-    NO_CHECK_TOKENS   =0x100000 # Don't check tokens
-    NO_CHECK_ENCODING =0x200000 # Don't check text encodings
+    # No flags
+    NONE              = 0x000000
 
-    NO_CHECK_ASCII   = NO_CHECK_TEXT # alias for NO_CHECK_TEXT
+    # Turn on debugging
+    DEBUG             = 0x000001
+
+    # Follow symlinks
+    SYMLINK           = 0x000002
+
+    # Check inside compressed files
+    COMPRESS          = 0x000004
+
+    # Look at the contents of devices
+    DEVICES           = 0x000008
+
+    # Return the MIME type
+    MIME_TYPE         = 0x000010
+
+    # Return all matches
+    CONTINUE          = 0x000020
+
+    # Print warnings to stderr
+    CHECK             = 0x000040
+
+    # Restore access time on exit
+    PRESERVE_ATIME    = 0x000080
+
+    # Don't translate unprintable chars
+    RAW               = 0x000100
+
+    # Handle ENOENT etc as real errors
+    ERROR             = 0x000200
+
+    # Return the MIME encoding
+    MIME_ENCODING     = 0x000400
+
+    # alias for (MAGIC_MIME_TYPE|MAGIC_MIME_ENCODING)
+    MIME              = (MIME_TYPE|MIME_ENCODING)
+
+    # Return the Apple creator and type
+    APPLE             = 0x000800
+
+    # Don't check for compressed files
+    NO_CHECK_COMPRESS = 0x001000
+
+    # Don't check for tar files
+    NO_CHECK_TAR      = 0x002000
+
+    # Don't check magic entries
+    NO_CHECK_SOFT     = 0x004000
+
+    # Don't check application type
+    NO_CHECK_APPTYPE  = 0x008000
+
+    # Don't check for elf details
+    NO_CHECK_ELF      = 0x010000
+
+    # Don't check for text files
+    NO_CHECK_TEXT     = 0x020000
+
+    # Don't check for cdf files
+    NO_CHECK_CDF      = 0x040000
+
+    # Don't check tokens
+    NO_CHECK_TOKENS   = 0x100000
+
+    # Don't check text encodings
+    NO_CHECK_ENCODING = 0x200000 
+
+    # alias for NO_CHECK_TEXT
+    NO_CHECK_ASCII   = NO_CHECK_TEXT 
   end
 
   # Returns the default magic database path.
@@ -86,29 +132,29 @@ class MagicFFI
   # @see dbload()
   def initialize(param = nil)
     param ||= {}
-    raise (TypeError, "Invalid Type for params") if not param.is_a?(Hash)
+    raise(TypeError, "Invalid Type for params") if not param.is_a?(Hash)
 
     flags = param[:flags] || Flags::NONE
-    raise (TypeError, "flags must be a Fixnum") if not flags.is_a?(Fixnum)
+    raise(TypeError, "flags must be a Fixnum") if not flags.is_a?(Fixnum)
 
     db = param[:db]
-    raise (TypeError, "db must be nil or a String") if db and not db.is_a?(String)
+    raise(TypeError, "db must be nil or a String") if db and not db.is_a?(String)
 
     @_cookie = FFI::Libmagic.magic_open(flags)
     if @_cookie.null?
       raise(InitFatal, "magic_open(#{flags}) returned a null pointer")
     end
 
-    if FFI::Libmagic.magic_load(@_cookie, db) != 0
+    if FFI::Libmagic.magic_load(_cookie, db) != 0
       err = lasterror()
-      FFI::Libmagic.magic_close(@_cookie)
+      FFI::Libmagic.magic_close(_cookie)
       raise(DbLoadError, "Error loading db: #{db.inspect} " << err)
     end
   end
 
   # Close the libmagic data scanner handle when you are finished with it
   def close
-    FFI::Libmagic.magic_close(@_cookie) unless @closed
+    FFI::Libmagic.magic_close(_cookie) unless @closed
 
     @closed = true
     return nil
@@ -125,8 +171,9 @@ class MagicFFI
   # @return [String] 
   #   A textual description of the contents of the file
   def file(filename)
-    return nil if filename.nil?
-    FFI::Libmagic.magic_file(@_cookie, filename)
+    File.stat(filename)
+    raise(TypeError, "filename must not be nil") if filename.nil?
+    FFI::Libmagic.magic_file(_cookie, filename)
   end
 
   # Analyzes a string buffer against the magicfile database
@@ -136,9 +183,10 @@ class MagicFFI
   # @return [String] 
   #   A textual description of the contents the string
   def string(str)
+    raise(TypeError, "wrong argument type #{str.class} (expected String)") unless str.is_a?(String)
     p = FFI::MemoryPointer.new(str.size)
     p.write_string_length(str, str.size)
-    FFI::Libmagic.magic_buffer(@_cookie, p, str.size)
+    FFI::Libmagic.magic_buffer(_cookie, p, str.size)
   end
 
   # Used to load one or more magic databases.
@@ -152,7 +200,7 @@ class MagicFFI
   #
   # @raise [DbLoadError] if an error occurred loading the database(s)
   def dbload(magicfiles)
-    if FFI::Libmagic.magic_load(@_cookie, magicfiles) != 0
+    if FFI::Libmagic.magic_load(_cookie, magicfiles) != 0
       raise(DbLoadError, "Error loading db: #{magicfiles.inspect} " << lasterror())
     else
       return true
@@ -166,7 +214,7 @@ class MagicFFI
   #   The flag values should be 'or'ed together with '|'. 
   #   Using 0 will clear all flags.
   def flags=(flags)
-    if FFI::LibMagic.magic_setflags(@_cookie, flags) < 0
+    if FFI::Libmagic.magic_setflags(_cookie, flags) < 0
       raise(FlagError, lasterror())
     end
   end
@@ -185,9 +233,10 @@ class MagicFFI
   #   nil compiles the default database.
   #
   # @return [true] if everything went well.
+  #
   # @raise [CompileError] if an error occurred.
   def compile(filenames)
-    if FFI::Libmagic.magic_compile(@_cookie, filenames) != 0
+    if FFI::Libmagic.magic_compile(_cookie, filenames) != 0
       raise(CompileError, "Error compiling #{filenames.inspect}: " << lasterror())
     else
       return true
@@ -206,22 +255,24 @@ class MagicFFI
   #
   # @return [true,false] Indicates whether the check was successful.
   def check_syntax(filenames=nil)
-    return (FFI::Libmagic.magic_check(@_cookie, filenames) == 0)
+    return (FFI::Libmagic.magic_check(_cookie, filenames) == 0)
   end
 
   private
-    def _check_closed
+    def _cookie
       if @closed
         raise(ClosedError, "This magic cookie is closed and can no longer be used")
+      else
+        @_cookie
       end
     end
 
     def lasterror
-      FFI::Libmagic.magic_error(@_cookie)
+      FFI::Libmagic.magic_error(_cookie)
     end
 
     def lasterrno
-      FFI::Libmagic.magic_errno(@_cookie)
+      FFI::Libmagic.magic_errno(_cookie)
     end
 
 end

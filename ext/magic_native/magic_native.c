@@ -1,6 +1,7 @@
 #include "ruby.h"
 #include <magic.h>
-#include <stdio.h>
+#include <sys/stat.h>
+#include <string.h>
 
 VALUE c_magic = Qnil;
 VALUE m_flags = Qnil;
@@ -24,29 +25,43 @@ _check_closed(VALUE self) {
   return (magic_t) ret;
 }
 
+/* internal MACRO to check for the existence of a file */
+#define _confirm_file_exists(_filename) \
+{ struct stat st;\
+  if(stat(_filename, &st) < 0) rb_sys_fail(_filename); }
+
 #define CLOSED_ERR_MSG "This magic cookie is closed and can no longer be used"
 
-/* call-seq: magic=Magic.new(:db => '/path/to/some/magic.mgc', :flags => Magic::Flags::None)
+/* call-seq: Magic.path() -> "default_magic_db"
+ *
+ * @return String Returns the default magic database path.
+ */
+VALUE 
+rb_magic_s_path(VALUE klass) {
+  return rb_str_new2(magic_getpath(NULL, 0));
+}
+
+/* call-seq: Magic.new(params={})
  *
  * Instantiates a new Magic cookie which we can use to load magic databases,
  * compile new databases, and identify files and string buffers.
  *
- * @param [Hash, nil] params
+ * @param Hash params
  *      A hash of optional parameters to pass to the initializer.
  *
- * @option params [String] :db
+ * @option params String :db
  *      One or more magic databases to load on initialization. If nothing
  *      is specified, the default database will be used.
  *
- * @option params [Fixnum] :flags
+ * @option params Fixnum :flags
  *      Initialization flags to configure libmagic. 
  *
  * @see Magic::Flags and libmagic(3)
  *
- * @raise [Magic::DbLoadError] 
+ * @raise Magic::DbLoadError
  *      An error is raised if the database cannot be loaded.
  *
- * @raise [Magic::InitFatal]
+ * @raise Magic::InitFatal
  *      An error is raised if an unknown error is encountered initializing
  *      the cookie with libmagic.
  */
@@ -56,7 +71,8 @@ rb_magic_initialize(int argc, VALUE *argv, VALUE klass) {
   VALUE flags_val, db_val;
   magic_t cookie; 
   int flags = 0;
-  char *magicf = NULL, *error=NULL;
+  char *magicf = NULL;
+  const char *error=NULL;
 
   rb_scan_args(argc, argv, "01", &params);
 
@@ -89,38 +105,32 @@ rb_magic_initialize(int argc, VALUE *argv, VALUE klass) {
 }
 
 
-/* call-seq: Magic.path
- *
- * Returns the default magic database path.
- */
-VALUE 
-rb_magic_path(VALUE klass) {
-  const char * path = magic_getpath(NULL, 0);
-  return rb_str_new2(path);
-}
-
-/* call-seq: magic.dbload("/path/to/magic.mgc:/path/to/magicdir/") -> true
+/* call-seq: dbload(magicfiles) -> true
  *
  * Used to load one or more magic databases.
  * 
- * @param magicfiles
+ * @param String magicfiles
  *   One or more filenames seperated by colons. If nil, the default database
  *   is loaded.
  *   If uncompiled magic files are specified, they are compiled on the fly
  *   but they do not generate new .mgc files as with the compile method.
  *   Multiple files be specified by seperating them with colons.
  *
- * @raise [DbLoadError] if an error occurred loading the database(s)
+ * @raise DbLoadError if an error occurred loading the database(s)
+ *
+ * @raise Magic::CloseError 
+ *      Raises an error if the Magic object has been closed.
  */
 VALUE 
 rb_magic_dbload(VALUE self, VALUE magicf_val) {
   magic_t cookie = _check_closed(self);
-  char *magicf;
+  char *magicf = NULL;
 
   if(!cookie)             rb_raise(e_ClosedError, CLOSED_ERR_MSG);
-  if(magicf_val != Qnil)  Check_Type(magicf_val, T_STRING);
-
-  magicf = RSTRING_PTR(magicf_val);
+  if(magicf_val != Qnil){
+    Check_Type(magicf_val, T_STRING);
+    magicf = RSTRING_PTR(magicf_val);
+  }
 
   Data_Get_Struct(self, void, cookie);
 
@@ -130,7 +140,7 @@ rb_magic_dbload(VALUE self, VALUE magicf_val) {
   return Qtrue;
 }
 
-/* call-seq: magic.close -> nil
+/* call-seq: close() -> nil
  *
  * Close the libmagic data scanner handle when you are finished with it
  *
@@ -147,11 +157,11 @@ rb_magic_close(VALUE self) {
   return Qnil;
 }
 
-/* call-seq: magic.closed? -> true|false
+/* call-seq: closed? -> true|false
  *
  * Indicates whether the magic cookie has been closed
  *
- * @return [true,false]
+ * @return true,false
  */
 VALUE 
 rb_magic_is_closed(VALUE self) {
@@ -160,37 +170,81 @@ rb_magic_is_closed(VALUE self) {
   return ret;
 }
 
-/* call-seq: magic.file("somefile") -> "file description"
+/* call-seq: file(filename) -> String
  *
- * Analyzes file contents against the magicfile database
+ * Identifies file contents using the magicfile database.
  *
- * @param filename 
- *   The path to a file to inspect
- * @return [String] 
- *   A textual description of the contents of the file
+ * @param String filename
+ *      The path to the file to analyze
+ *
+ * @return String
+ *      A textual description of the contents of the file
+ *
+ * @raise Magic::CloseError 
+ *      Raises an error if the Magic object has been closed.
  */
 VALUE 
 rb_magic_file(VALUE self, VALUE filename) {
   const char *ret;
   magic_t cookie = _check_closed(self);
+  char * fname;
 
-  if (!cookie)          rb_raise(e_ClosedError, CLOSED_ERR_MSG);
-  if (filename != Qnil) Check_Type(filename, T_STRING);
+  if (!cookie) {
+    rb_raise(e_ClosedError, CLOSED_ERR_MSG);
+  } else {
+    struct stat st;
+    if(stat(_filename, &st) < 0) rb_sys_fail(_filename); }
+      
+  Check_Type(filename, T_STRING);
+  fname = RSTRING_PTR(filename);
+  _confirm_file_exists(fname);
 
-  ret=magic_file(cookie, RSTRING_PTR(filename));
+  ret=magic_file(cookie, fname);
   return rb_str_new2(ret);
 }
 
+/* call-seq: string(buf) -> String
+ *
+ * Identifies string contents using the magicfile database.
+ *
+ * @param String buf
+ *      The string to analyze.
+ *
+ * @return String
+ *      A textual description of the contents of the string
+ *
+ * @raise Magic::CloseError 
+ *      Raises an error if the Magic object has been closed.
+ */
 VALUE rb_magic_string(VALUE self, VALUE string) {
   const char *ret;
   magic_t cookie = _check_closed(self);
   if (!cookie)          rb_raise(e_ClosedError, CLOSED_ERR_MSG);
-  if (string != Qnil)   Check_Type(string, T_STRING);
+  Check_Type(string, T_STRING);
 
   ret=magic_buffer(cookie, RSTRING_PTR(string), RSTRING_LEN(string));
   return rb_str_new2(ret);
 }
 
+/* call-seq: compile(filename=nil)
+ *
+ * Can be used to compile magic files. This does not load files, however. You must
+ * use dbload for that.
+ *
+ * Note: Errors and warnings may be displayed on stderr.
+ *
+ * @param String,nil filename
+ *   A colon seperated list of filenames or a single filename. 
+ *   The compiled files created are generated in the current directory using 
+ *   the basename(1) of each file argument with ".mgc" appended to it.
+ *   Directory names can be compiled, in which case the contents of the 
+ *   directory will be compiled together as a single .mgc file.
+ *   nil compiles the default database.
+ *
+ * @return true if everything went well.
+ *
+ * @raise CompileError if an error occurred.
+ */
 VALUE rb_magic_compile(VALUE self, VALUE magicf) {
   char *_magicf;
   magic_t cookie = _check_closed(self);
@@ -205,34 +259,79 @@ VALUE rb_magic_compile(VALUE self, VALUE magicf) {
         "Error compiling \"%s\": %s", _magicf, magic_error(cookie));
 }
 
-VALUE rb_magic_check_syntax(VALUE self, VALUE magicf) {
+/* call-seq: magic.check_syntax("some_magic_db") -> (true|false)
+ *
+ * Can be used to check the validity of magic files before compiling them.
+ * This is basically a dry-run that can be used before compiling magicfile 
+ * databases.
+ *
+ * Note: Errors and warnings may be displayed on stderr.
+ *
+ * @param String,nil filename
+ *   A colon seperated list of filenames or a single file. nil checks the
+ *   default database.
+ *
+ * @return true,false Indicates whether the check was successful.
+*/
+VALUE rb_magic_check_syntax(VALUE self, VALUE rb_magicf) {
   magic_t cookie = _check_closed(self);
+  char * magicf = NULL;
 
   if (!cookie) rb_raise(e_ClosedError, CLOSED_ERR_MSG);
-  if (magicf != Qnil) Check_Type(magicf, T_STRING);
+  if (rb_magicf != Qnil) {
+    Check_Type(rb_magicf, T_STRING);
+    magicf = RSTRING_PTR(rb_magicf);
+  }
 
-  if (magic_check(cookie, RSTRING_PTR(magicf)) == 0) return Qtrue;
+  if (magic_check(cookie, magicf) == 0) return Qtrue;
   else return Qfalse;
 }
 
+/* call-seq: magic.flags = (Magic::Flags::MIME | Magic::Flags::DEBUG)
+ *
+ * Sets libmagic flags on the object. See Magic::Flags
+ *
+ * @raise Magic::CloseError 
+ *      Raises an error if the Magic object has been closed.
+ */
 VALUE rb_magic_set_flags(VALUE self, VALUE flags) {
   magic_t cookie = _check_closed(self);
-  return Qnil;
+
+  Check_Type(flags, T_FIXNUM);
+  
+  if(magic_setflags(cookie, NUM2INT(flags)) < 0)
+    rb_raise(e_FlagError, magic_error(cookie));
+
+  return flags;
 }
 
 void Init_magic_native() {
-  /* The Magic class is both our interface to libmagic functionality
-   * as well as the top-level namespace */
+/* The Magic class is both our interface to libmagic functionality
+   as well as the top-level namespace */
   c_magic = rb_define_class("Magic", rb_cObject);
+  rb_define_singleton_method(c_magic, "path", rb_magic_s_path, 0);
+//  rb_define_singleton_method(c_magic, "compile", rb_magic_s_compile, 1);
+//  rb_define_singleton_method(c_magic, "check_syntax", rb_magic_s_check_syntax, 1);
+
   rb_define_singleton_method(c_magic, "new", rb_magic_initialize, -1);
+
   rb_define_method(c_magic, "close", rb_magic_close, 0);
   rb_define_method(c_magic, "closed?", rb_magic_is_closed, 0);
   rb_define_method(c_magic, "compile", rb_magic_compile, 1);
   rb_define_method(c_magic, "check_syntax", rb_magic_check_syntax, 1);
   rb_define_method(c_magic, "file", rb_magic_file, 1);
   rb_define_method(c_magic, "string", rb_magic_string, 1);
+  rb_define_method(c_magic, "flags=", rb_magic_set_flags, 1);
+  rb_define_method(c_magic, "dbload", rb_magic_dbload, 1);
 
-  /* The flags module contains only constants exposed to ruby */
+/* Defines various flags that can be passed when creating a magic scan 
+ * object using Magic.new with the :flags parameter or after instantiation
+ * using Magic.flags= .
+ *
+ * @see MagicFFI::Flags where these are more fully documented
+ *
+ * @see libmagic(3)
+ */
   m_flags = rb_define_module_under(c_magic, "Flags");
   rb_define_const(m_flags, "NONE", INT2FIX(MAGIC_NONE));
   rb_define_const(m_flags, "DEBUG", INT2FIX(MAGIC_DEBUG));
@@ -260,11 +359,27 @@ void Init_magic_native() {
   rb_define_const(m_flags, "NO_CHECK_ASCII", INT2FIX(MAGIC_NO_CHECK_ASCII));
 
   /* define our exception classes... */
+
+/* A base class for other Magic error types */
   e_MagicError = rb_define_class_under(c_magic, "MagicError", rb_eStandardError);
+
+/* InitFatal is raised for unexpected errors initializing Magic */
   e_InitFatal = rb_define_class_under(c_magic, "InitFatal", e_MagicError);
+
+/* DbLoadError is raised when an error occurs loading a magic database */
   e_DbLoadError = rb_define_class_under(c_magic, "DbLoadError", e_MagicError);
+
+/* CompileError is raised when an error occurs compiling a magic database */
   e_CompileError = rb_define_class_under(c_magic, "CompileError", e_MagicError);
+
+/* FlagError is raised when an error occurs compiling setting flags
+ *
+ * This is only known to happen on systems that don't support utime(2), or
+ * utimes(2) when Magic::Flag::PRESERVE_ATIME is set
+ */
   e_FlagError = rb_define_class_under(c_magic, "FlagError", e_MagicError);
+
+/* ClosedError is raised if an operation is called on a closed Magic object */
   e_ClosedError = rb_define_class_under(c_magic, "ClosedError", e_MagicError);
 
 }
