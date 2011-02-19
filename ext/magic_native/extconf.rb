@@ -28,6 +28,5 @@ unless have_library("magic") and
   raise "You must install the libmagic library"
 end
 
-create_header
 create_makefile(extension_name)
 
