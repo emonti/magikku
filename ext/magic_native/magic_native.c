@@ -185,22 +185,23 @@ rb_magic_is_closed(VALUE self) {
  */
 VALUE 
 rb_magic_file(VALUE self, VALUE filename) {
-  const char *ret;
   magic_t cookie = _check_closed(self);
-  char * fname;
-
-  if (!cookie) {
-    rb_raise(e_ClosedError, CLOSED_ERR_MSG);
-  } else {
+  if (cookie) {
+    char * fname;
     struct stat st;
-    if(stat(_filename, &st) < 0) rb_sys_fail(_filename); }
-      
-  Check_Type(filename, T_STRING);
-  fname = RSTRING_PTR(filename);
-  _confirm_file_exists(fname);
 
-  ret=magic_file(cookie, fname);
-  return rb_str_new2(ret);
+    Check_Type(filename, T_STRING);
+    fname = RSTRING_PTR(filename);
+
+    if(stat(fname, &st) < 0) 
+      rb_sys_fail(fname);
+
+    return rb_str_new2(magic_file(cookie, fname));
+
+  } else {
+    rb_raise(e_ClosedError, CLOSED_ERR_MSG);
+  }
+      
 }
 
 /* call-seq: string(buf) -> String
