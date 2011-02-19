@@ -325,13 +325,39 @@ void Init_magic_native() {
   rb_define_method(c_magic, "flags=", rb_magic_set_flags, 1);
   rb_define_method(c_magic, "dbload", rb_magic_dbload, 1);
 
-/* Defines various flags that can be passed when creating a magic scan 
+/* Defines various flags that can be passed when creating a magic scanning
  * object using Magic.new with the :flags parameter or after instantiation
  * using Magic.flags= .
  *
- * @see MagicFFI::Flags where these are more fully documented
+ * Available flags are as follows:
+ *
+ *    NONE                  No flags
+ *    DEBUG                 Turn on debugging
+ *    SYMLINK               Follow symlinks
+ *    COMPRESS              Check inside compressed files
+ *    DEVICES               Look at the contents of devices
+ *    MIME_TYPE             Return the MIME type
+ *    CONTINUE              Return all matches
+ *    CHECK                 Print warnings to stderr
+ *    PRESERVE_ATIME        Restore access time on exit
+ *    RAW                   Don't translate unprintable chars
+ *    ERROR                 Handle ENOENT etc as real errors
+ *    MIME_ENCODING         Return the MIME encoding
+ *    MIME                  Alias for (MIME_TYPE|MIME_ENCODING)
+ *    APPLE                 Return the Apple creator and type
+ *    NO_CHECK_COMPRESS     Don't check for compressed files
+ *    NO_CHECK_TAR          Don't check for tar files
+ *    NO_CHECK_SOFT         Don't check magic entries
+ *    NO_CHECK_APPTYPE      Don't check application type
+ *    NO_CHECK_ELF          Don't check for elf details
+ *    NO_CHECK_TEXT         Don't check for text files
+ *    NO_CHECK_CDF          Don't check for cdf files
+ *    NO_CHECK_TOKENS       Don't check tokens
+ *    NO_CHECK_ENCODING     Don't check text encodings
+ *    NO_CHECK_ASCII        Alias for NO_CHECK_TEXT
  *
  * @see libmagic(3)
+ *
  */
   m_flags = rb_define_module_under(c_magic, "Flags");
   rb_define_const(m_flags, "NONE", INT2FIX(MAGIC_NONE));
