@@ -6,6 +6,7 @@ if Magic != MagicFFI
   describe MagicFFI do
     before :all do 
       @klass = MagicFFI
+      @argerror = ArgumentError
     end
 
     it_should_behave_like "Magic compiling interface"
