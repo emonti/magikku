@@ -86,15 +86,24 @@ class MagicFFI
   # @see dbload()
   def initialize(param = nil)
     param ||= {}
+    raise (TypeError, "Invalid Type for params") if not param.is_a?(Hash)
+
     flags = param[:flags] || Flags::NONE
-    raise (TypeError, "Invalid Type for paramter") if not flags.kind_of?(Fixnum)
-    magicfiles = param[:db]
+    raise (TypeError, "flags must be a Fixnum") if not flags.is_a?(Fixnum)
+
+    db = param[:db]
+    raise (TypeError, "db must be nil or a String") if db and not db.is_a?(String)
+
     @_cookie = FFI::Libmagic.magic_open(flags)
     if @_cookie.null?
       raise(InitFatal, "magic_open(#{flags}) returned a null pointer")
     end
 
-    dbload(magicfiles)
+    if FFI::Libmagic.magic_load(@_cookie, db) != 0
+      err = lasterror()
+      FFI::Libmagic.magic_close(@_cookie)
+      raise(DbLoadError, "Error loading db: #{db.inspect} " << err)
+    end
   end
 
   # Close the libmagic data scanner handle when you are finished with it
