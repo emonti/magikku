@@ -6,13 +6,12 @@ begin
   Jeweler::Tasks.new do |gem|
     gem.name = "ruby-magic"
     gem.summary = "Ruby bindings for the libmagic(3) library"
-    gem.description = "Ruby bindings for the libmagic(3) library"
+    gem.description = "Ruby bindings to the libmagic(3) library for identifying unknown files and data contents"
     gem.email = "esmonti@gmail.com"
     gem.homepage = "http://github.com/emonti/ruby-magic"
     gem.authors = ["Eric Monti"]
     gem.add_development_dependency "ffi", ">= 0.5.0"
     gem.add_development_dependency "rspec", ">= 1.2.9"
-    # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
   Jeweler::GemcutterTasks.new
 rescue LoadError
@@ -52,6 +51,7 @@ Rake::RDocTask.new do |rdoc|
   rdoc.title = "ruby-magic #{version}"
   rdoc.rdoc_files.include('README*')
   rdoc.rdoc_files.include('lib/**/*.rb')
+  rdoc.rdoc_files.include('ext/**/*.c')
 end
 
 require 'yard'
