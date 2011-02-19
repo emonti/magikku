@@ -14,15 +14,10 @@ VALUE e_ClosedError = Qnil;
 
 
 
-VALUE _real_dbload(magic_t cookie, char *magicf) {
-  if (magic_load(cookie, magicf) != 0)
-    rb_raise(e_DbLoadError, 
-        "Error loading db \"%s\": %s", magicf, magic_error(cookie));
-  else
-    return Qtrue;
-}
 
-magic_t _check_closed(VALUE self) {
+/* Internal function to check whether a handle is already closed */
+magic_t 
+_check_closed(VALUE self) {
   magic_t ret = NULL;
   if (rb_iv_get(self, "@closed") != Qtrue) 
     Data_Get_Struct(self, void, ret);
@@ -31,12 +26,37 @@ magic_t _check_closed(VALUE self) {
 
 #define CLOSED_ERR_MSG "This magic cookie is closed and can no longer be used"
 
-VALUE rb_magic_initialize(int argc, VALUE *argv, VALUE klass) {
+/* call-seq: magic=Magic.new(:db => '/path/to/some/magic.mgc', :flags => Magic::Flags::None)
+ *
+ * Instantiates a new Magic cookie which we can use to load magic databases,
+ * compile new databases, and identify files and string buffers.
+ *
+ * @param [Hash, nil] params
+ *      A hash of optional parameters to pass to the initializer.
+ *
+ * @option params [String] :db
+ *      One or more magic databases to load on initialization. If nothing
+ *      is specified, the default database will be used.
+ *
+ * @option params [Fixnum] :flags
+ *      Initialization flags to configure libmagic. 
+ *
+ * @see Magic::Flags and libmagic(3)
+ *
+ * @raise [Magic::DbLoadError] 
+ *      An error is raised if the database cannot be loaded.
+ *
+ * @raise [Magic::InitFatal]
+ *      An error is raised if an unknown error is encountered initializing
+ *      the cookie with libmagic.
+ */
+VALUE 
+rb_magic_initialize(int argc, VALUE *argv, VALUE klass) {
   VALUE params = Qnil;
   VALUE flags_val, db_val;
   magic_t cookie; 
   int flags = 0;
-  char *magicf = NULL;
+  char *magicf = NULL, *error=NULL;
 
   rb_scan_args(argc, argv, "01", &params);
 
@@ -59,32 +79,66 @@ VALUE rb_magic_initialize(int argc, VALUE *argv, VALUE klass) {
   if ((cookie=magic_open(flags))==NULL)
     rb_raise(e_InitFatal, "magic_open(%i) returned a null pointer", flags);
 
-  if (magic_load(cookie, magicf) != 0)
-    rb_raise(e_DbLoadError, 
-        "Error loading db \"%s\": %s", magicf, magic_error(cookie));
+  if (magic_load(cookie, magicf) != 0) {
+    error = magic_error(cookie);
+    magic_close(cookie);
+    rb_raise(e_DbLoadError, "Error loading db \"%s\": %s", magicf, error);
+  }
 
   return Data_Wrap_Struct(klass, NULL, NULL, cookie);
 }
 
 
-
-VALUE rb_magic_path(VALUE klass) {
+/* call-seq: Magic.path
+ *
+ * Returns the default magic database path.
+ */
+VALUE 
+rb_magic_path(VALUE klass) {
   const char * path = magic_getpath(NULL, 0);
   return rb_str_new2(path);
 }
 
-VALUE rb_magic_dbload(VALUE self, VALUE magicf) {
+/* call-seq: magic.dbload("/path/to/magic.mgc:/path/to/magicdir/") -> true
+ *
+ * Used to load one or more magic databases.
+ * 
+ * @param magicfiles
+ *   One or more filenames seperated by colons. If nil, the default database
+ *   is loaded.
+ *   If uncompiled magic files are specified, they are compiled on the fly
+ *   but they do not generate new .mgc files as with the compile method.
+ *   Multiple files be specified by seperating them with colons.
+ *
+ * @raise [DbLoadError] if an error occurred loading the database(s)
+ */
+VALUE 
+rb_magic_dbload(VALUE self, VALUE magicf_val) {
   magic_t cookie = _check_closed(self);
+  char *magicf;
 
-  if(!cookie)           rb_raise(e_ClosedError, CLOSED_ERR_MSG);
-  if(magicf != Qnil)    Check_Type(magicf, T_STRING);
+  if(!cookie)             rb_raise(e_ClosedError, CLOSED_ERR_MSG);
+  if(magicf_val != Qnil)  Check_Type(magicf_val, T_STRING);
+
+  magicf = RSTRING_PTR(magicf_val);
 
   Data_Get_Struct(self, void, cookie);
 
-  return _real_dbload(cookie, RSTRING_PTR(magicf));
+  if (magic_load(cookie, magicf) != 0)
+    rb_raise(e_DbLoadError, "Error loading db \"%s\": %s", magicf, magic_error(cookie));
+
+  return Qtrue;
 }
 
-VALUE rb_magic_close(VALUE self) {
+/* call-seq: magic.close -> nil
+ *
+ * Close the libmagic data scanner handle when you are finished with it
+ *
+ * Note that magic handles are never closed automatically, even when
+ * garbage collection occurs.
+ */
+VALUE 
+rb_magic_close(VALUE self) {
   magic_t cookie = _check_closed(self);
 
   if(cookie) magic_close(cookie);
@@ -93,13 +147,30 @@ VALUE rb_magic_close(VALUE self) {
   return Qnil;
 }
 
-VALUE rb_magic_is_closed(VALUE self) {
+/* call-seq: magic.closed? -> true|false
+ *
+ * Indicates whether the magic cookie has been closed
+ *
+ * @return [true,false]
+ */
+VALUE 
+rb_magic_is_closed(VALUE self) {
   VALUE ret = rb_iv_get(self, "@closed");
   if (ret == Qnil) ret = Qfalse;
   return ret;
 }
 
-VALUE rb_magic_file(VALUE self, VALUE filename) {
+/* call-seq: magic.file("somefile") -> "file description"
+ *
+ * Analyzes file contents against the magicfile database
+ *
+ * @param filename 
+ *   The path to a file to inspect
+ * @return [String] 
+ *   A textual description of the contents of the file
+ */
+VALUE 
+rb_magic_file(VALUE self, VALUE filename) {
   const char *ret;
   magic_t cookie = _check_closed(self);
 
@@ -155,8 +226,11 @@ void Init_magic_native() {
   c_magic = rb_define_class("Magic", rb_cObject);
   rb_define_singleton_method(c_magic, "new", rb_magic_initialize, -1);
   rb_define_method(c_magic, "close", rb_magic_close, 0);
+  rb_define_method(c_magic, "closed?", rb_magic_is_closed, 0);
   rb_define_method(c_magic, "compile", rb_magic_compile, 1);
   rb_define_method(c_magic, "check_syntax", rb_magic_check_syntax, 1);
+  rb_define_method(c_magic, "file", rb_magic_file, 1);
+  rb_define_method(c_magic, "string", rb_magic_string, 1);
 
   /* The flags module contains only constants exposed to ruby */
   m_flags = rb_define_module_under(c_magic, "Flags");
