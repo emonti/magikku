@@ -34,6 +34,9 @@ end
 require 'rake/extensiontask'
 Rake::ExtensionTask.new("magic_native")
 
+CLEAN.include("doc")
+CLEAN.include("rdoc")
+CLEAN.include("coverage")
 CLEAN.include("lib/*.bundle")
 CLEAN.include("lib/*.so")
 
