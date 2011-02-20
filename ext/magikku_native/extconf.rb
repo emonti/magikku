@@ -24,7 +24,7 @@ extension_name = "magikku_native"
 dir_config(extension_name, '/usr/local/include', '/usr/local/lib')
 
 unless have_library("magic") and
-       find_header("magic.h", "/usr/local/include")
+       find_header("magic.h")
   raise "You must install the libmagic library"
 end
 
