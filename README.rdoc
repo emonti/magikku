@@ -1,17 +1,87 @@
-= ruby-magic
+= magikku
 
 Ruby bindings for libmagic(3)
 
-Includes FFI bindings as well as native ruby bindings (the latter is coming soon)..
+There are other variations of this binding. This one was written to ensure all features 
+of the library were bound correctly (including compiling and checking magic databases)
+as well as to ensure compatability on different ruby environments.
+
+Magikku includes FFI bindings as well as native ruby bindings.
 
 == Synopsis
 
-(coming soon)
+Here's a basic example identifying file contents.
+
+  #!/usr/bin/env ruby
+
+  require 'rubygems'
+  require 'magikku'
+
+  puts "This file is: " << Magikku.file(__FILE__)
+  puts "Mime Type:    " << Magikku.file(__FILE__, :flags => Magikku::Flags::MIME)
+
+
+... or string contents... 
+
+  #!/usr/bin/env ruby
+
+  require 'rubygems'
+  require 'magikku'
+
+  dat = STDIN.read
+  puts "Data is:   " << Magikku.string(dat)
+  puts "Mime Type: " << Magikku.string(dat, :flags => Magikku::Flags::MIME)
+
+Sometimes it's better to initialize a single object to reuse for lots of files:
+
+  #!/usr/bin/env ruby
+
+  require 'rubygems'
+  require 'magikku'
+
+  def ident(magik, f) 
+    magik.flags = Magikku::Flags::NONE
+    print "#{f} (#{magik.file(f)}) "
+    magik.flags = Magikku::Flags::MIME
+    puts magik.file(f)
+
+    if File.directory?(f)
+      Dir[File.join(f, "*")].each {|f2| ident(magik, f2) }
+    end
+  end
+
+  magik = Magikku.new
+  Dir["*"].each do |f|
+    ident(magik,f)
+  end
+  magik.close
+    
+
+== Requirements
+
+  * libmagic - The dynamic library is generally installed when buliding from 
+    source, but your system may have a package available. 
+    http://www.darwinsys.com/file/ 
+
+Optional:
+
+  * ruby-ffi - If you do not wish to compile the C bindings, or if you want to
+    develop magikku, you will need to have ruby-FFI available. But, this is not
+    needed for basic use under MRI (Matz Ruby Interpreter). http://github.com/ffi/ffi
 
 == Installation
 
-  (sudo)? gem install ruby-magic
+As a gem:
 
+  (sudo)? gem install magikku
+
+From github:
+  # !first ensure you have libmagic installed.
+
+  git clone http://github.com/emonti/magikku.git
+  cd magikku
+  rake compile
+  rake spec # to make sure everything works
 
 == Copyright
 
