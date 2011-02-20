@@ -36,6 +36,7 @@ Rake::ExtensionTask.new("magikku_native")
 CLEAN.include("doc")
 CLEAN.include("rdoc")
 CLEAN.include("coverage")
+CLEAN.include("tmp")
 CLEAN.include("lib/*.bundle")
 CLEAN.include("lib/*.so")
 
