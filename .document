@@ -1,5 +1,7 @@
 README.rdoc
+History.txt
 lib/**/*.rb
 bin/*
+ext/**/*.c
 features/**/*.feature
 LICENSE
