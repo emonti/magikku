@@ -78,15 +78,15 @@ shared_examples_for "Magic compiling interface" do
     end
 
     it "should be able to identify string buffers" do
-      @magic.string(File.read sample_file("test.txt")).should == "ASCII text"
-      @magic.string(File.read sample_file("test.c")).should == "ASCII C program text"
+      @magic.string(File.read(sample_file("test.txt"))).should == "ASCII text"
+      @magic.string(File.read(sample_file("test.c"))).should == "ASCII C program text"
       @magic.string("\x01\x02\x03\x04").should == "data"
     end
 
     it "should be able to use flag options" do
       @magic.flags = @klass::Flags::MIME
-      @magic.string(File.read sample_file("test.txt")).should == "text/plain; charset=us-ascii"
-      @magic.string(File.read sample_file("test.c")).should == "text/x-c; charset=us-ascii"
+      @magic.string(File.read(sample_file("test.txt"))).should == "text/plain; charset=us-ascii"
+      @magic.string(File.read(sample_file("test.c"))).should == "text/x-c; charset=us-ascii"
       @magic.string("\x01\x02\x03\x04").should == "application/octet-stream; charset=binary"
     end
 
@@ -250,6 +250,39 @@ shared_examples_for "Magic compiling interface" do
       @klass.path.should be_kind_of(String)
       @klass.path.should_not be_empty
     end
+
+    it "should scan a file using the #{@klass}.file singleton method" do
+      @klass.file(sample_file('test.txt')).should == "ASCII text"
+      @klass.file(sample_file('test.c')).should == "ASCII C program text"
+    end
+
+    it "should take initialization params as extra args to .file()" do
+      @klass.file(sample_file('test.txt'), 
+                  :flags => @klass::Flags::MIME).should == "text/plain; charset=us-ascii"
+
+      @klass.file(sample_file('rawtestdat.raw'), :db => nil).should == "data"
+
+      @klass.file(sample_file('rawtestdat.raw'), :db => sample_file('test_magicrule')).should == "RUBYMAGICTESTHIT"
+
+    end
+
+    it "should scan a file using the #{@klass}.string singleton method" do
+      @klass.string(File.read(sample_file('test.txt'))).should == "ASCII text"
+      @klass.string(File.read(sample_file('test.c'))).should == "ASCII C program text"
+    end
+
+    it "should take initialization params as extra args to .string()" do
+
+      @klass.string(File.read(sample_file('test.txt')), 
+                  :flags => @klass::Flags::MIME).should == "text/plain; charset=us-ascii"
+      test_str="THISISARUBYMAGICTEST blah blah\nblah\x01\x02"
+      @klass.string(test_str).should_not == "RUBYMAGICTESTHIT"
+
+      @klass.string(test_str, :db => sample_file('test_magicrule')).should == "RUBYMAGICTESTHIT"
+
+     end
+
+
   end
 
 end
