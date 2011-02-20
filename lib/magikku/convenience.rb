@@ -1,5 +1,5 @@
 
-module MagicHelpers
+module MagikkuHelpers
   # A convenience method for checking syntax of magicdb files.
   #
   # Note: syntax errors and warnings may be displayed on stderr.
@@ -8,7 +8,7 @@ module MagicHelpers
   #   Filename or directory to compile
   #
   # @param Hash params
-  #   A hash of parameters to Magic.new()
+  #   A hash of parameters to Magikku.new()
   #
   # @return true,false
   def check_syntax(fname, params={})
@@ -26,11 +26,11 @@ module MagicHelpers
   #   Filename or directory to compile
   #
   # @param Hash params
-  #   A hash of parameters to Magic.new()
+  #   A hash of parameters to Magikku.new()
   #
   # @return true
   #
-  # @raise Magic::CompileError if an error occurs
+  # @raise Magikku::CompileError if an error occurs
   def compile(fname, params={})
     m=new(params)
     begin
@@ -46,7 +46,7 @@ module MagicHelpers
   #   Filename to identify
   #
   # @param Hash params
-  #   A hash of parameters to Magic.new()
+  #   A hash of parameters to Magikku.new()
   #
   # @return String
   #   Identification of the file contents.
@@ -65,7 +65,7 @@ module MagicHelpers
   #   String contents to identify
   #
   # @param Hash params
-  #   A hash of parameters to Magic.new()
+  #   A hash of parameters to Magikku.new()
   #
   # @return String
   #   Identification of the string.

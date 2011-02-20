@@ -19,7 +19,7 @@
 require 'mkmf'
 require 'rbconfig'
 
-extension_name = "magic_native"
+extension_name = "magikku_native"
 
 dir_config(extension_name)
 

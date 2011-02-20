@@ -6,7 +6,7 @@
 VALUE c_magic = Qnil;
 VALUE m_flags = Qnil;
 
-VALUE e_MagicError = Qnil;
+VALUE e_MagikkuError = Qnil;
 VALUE e_InitFatal = Qnil;
 VALUE e_DbLoadError = Qnil;
 VALUE e_CompileError = Qnil;
@@ -32,7 +32,7 @@ _check_closed(VALUE self) {
 
 #define CLOSED_ERR_MSG "This magic cookie is closed and can no longer be used"
 
-/* call-seq: Magic.path() -> "default_magic_db"
+/* call-seq: Magikku.path() -> "default_magic_db"
  *
  * @return String Returns the default magic database path.
  */
@@ -41,9 +41,9 @@ rb_magic_s_path(VALUE klass) {
   return rb_str_new2(magic_getpath(NULL, 0));
 }
 
-/* call-seq: Magic.new(params={})
+/* call-seq: Magikku.new(params={})
  *
- * Instantiates a new Magic cookie which we can use to load magic databases,
+ * Instantiates a new Magikku cookie which we can use to load magic databases,
  * compile new databases, and identify files and string buffers.
  *
  * @param Hash params
@@ -56,12 +56,12 @@ rb_magic_s_path(VALUE klass) {
  * @option params Fixnum :flags
  *      Initialization flags to configure libmagic. 
  *
- * @see Magic::Flags and libmagic(3)
+ * @see Magikku::Flags and libmagic(3)
  *
- * @raise Magic::DbLoadError
+ * @raise Magikku::DbLoadError
  *      An error is raised if the database cannot be loaded.
  *
- * @raise Magic::InitFatal
+ * @raise Magikku::InitFatal
  *      An error is raised if an unknown error is encountered initializing
  *      the cookie with libmagic.
  */
@@ -118,8 +118,8 @@ rb_magic_initialize(int argc, VALUE *argv, VALUE klass) {
  *
  * @raise DbLoadError if an error occurred loading the database(s)
  *
- * @raise Magic::CloseError 
- *      Raises an error if the Magic object has been closed.
+ * @raise Magikku::CloseError 
+ *      Raises an error if the Magikku object has been closed.
  */
 VALUE 
 rb_magic_dbload(VALUE self, VALUE magicf_val) {
@@ -180,8 +180,8 @@ rb_magic_is_closed(VALUE self) {
  * @return String
  *      A textual description of the contents of the file
  *
- * @raise Magic::CloseError 
- *      Raises an error if the Magic object has been closed.
+ * @raise Magikku::CloseError 
+ *      Raises an error if the Magikku object has been closed.
  */
 VALUE 
 rb_magic_file(VALUE self, VALUE filename) {
@@ -214,8 +214,8 @@ rb_magic_file(VALUE self, VALUE filename) {
  * @return String
  *      A textual description of the contents of the string
  *
- * @raise Magic::CloseError 
- *      Raises an error if the Magic object has been closed.
+ * @raise Magikku::CloseError 
+ *      Raises an error if the Magikku object has been closed.
  */
 VALUE rb_magic_string(VALUE self, VALUE string) {
   const char *ret;
@@ -288,12 +288,12 @@ VALUE rb_magic_check_syntax(VALUE self, VALUE rb_magicf) {
   else return Qfalse;
 }
 
-/* call-seq: magic.flags = (Magic::Flags::MIME | Magic::Flags::DEBUG)
+/* call-seq: magic.flags = (Magikku::Flags::MIME | Magikku::Flags::DEBUG)
  *
- * Sets libmagic flags on the object. See Magic::Flags
+ * Sets libmagic flags on the object. See Magikku::Flags
  *
- * @raise Magic::CloseError 
- *      Raises an error if the Magic object has been closed.
+ * @raise Magikku::CloseError 
+ *      Raises an error if the Magikku object has been closed.
  */
 VALUE rb_magic_set_flags(VALUE self, VALUE flags) {
   magic_t cookie = _check_closed(self);
@@ -306,10 +306,10 @@ VALUE rb_magic_set_flags(VALUE self, VALUE flags) {
   return flags;
 }
 
-void Init_magic_native() {
-/* The Magic class is both our interface to libmagic functionality
+void Init_magikku_native() {
+/* The Magikku class is both our interface to libmagic functionality
    as well as the top-level namespace */
-  c_magic = rb_define_class("Magic", rb_cObject);
+  c_magic = rb_define_class("Magikku", rb_cObject);
   rb_define_singleton_method(c_magic, "path", rb_magic_s_path, 0);
 //  rb_define_singleton_method(c_magic, "compile", rb_magic_s_compile, 1);
 //  rb_define_singleton_method(c_magic, "check_syntax", rb_magic_s_check_syntax, 1);
@@ -326,8 +326,8 @@ void Init_magic_native() {
   rb_define_method(c_magic, "dbload", rb_magic_dbload, 1);
 
 /* Defines various flags that can be passed when creating a magic scanning
- * object using Magic.new with the :flags parameter or after instantiation
- * using Magic.flags= .
+ * object using Magikku.new with the :flags parameter or after instantiation
+ * using Magikku.flags= .
  *
  * Available flags are as follows:
  *
@@ -387,26 +387,26 @@ void Init_magic_native() {
 
   /* define our exception classes... */
 
-/* A base class for other Magic error types */
-  e_MagicError = rb_define_class_under(c_magic, "MagicError", rb_eStandardError);
+/* A base class for other Magikku error types */
+  e_MagikkuError = rb_define_class_under(c_magic, "MagikkuError", rb_eStandardError);
 
-/* InitFatal is raised for unexpected errors initializing Magic */
-  e_InitFatal = rb_define_class_under(c_magic, "InitFatal", e_MagicError);
+/* InitFatal is raised for unexpected errors initializing Magikku */
+  e_InitFatal = rb_define_class_under(c_magic, "InitFatal", e_MagikkuError);
 
 /* DbLoadError is raised when an error occurs loading a magic database */
-  e_DbLoadError = rb_define_class_under(c_magic, "DbLoadError", e_MagicError);
+  e_DbLoadError = rb_define_class_under(c_magic, "DbLoadError", e_MagikkuError);
 
 /* CompileError is raised when an error occurs compiling a magic database */
-  e_CompileError = rb_define_class_under(c_magic, "CompileError", e_MagicError);
+  e_CompileError = rb_define_class_under(c_magic, "CompileError", e_MagikkuError);
 
 /* FlagError is raised when an error occurs compiling setting flags
  *
  * This is only known to happen on systems that don't support utime(2), or
- * utimes(2) when Magic::Flag::PRESERVE_ATIME is set
+ * utimes(2) when Magikku::Flag::PRESERVE_ATIME is set
  */
-  e_FlagError = rb_define_class_under(c_magic, "FlagError", e_MagicError);
+  e_FlagError = rb_define_class_under(c_magic, "FlagError", e_MagikkuError);
 
-/* ClosedError is raised if an operation is called on a closed Magic object */
-  e_ClosedError = rb_define_class_under(c_magic, "ClosedError", e_MagicError);
+/* ClosedError is raised if an operation is called on a closed Magikku object */
+  e_ClosedError = rb_define_class_under(c_magic, "ClosedError", e_MagikkuError);
 
 }

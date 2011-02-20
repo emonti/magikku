@@ -1,16 +1,16 @@
 require 'ffi'
 require 'ffi/libmagic'
 
-require 'magic/convenience'
+require 'magikku/convenience'
 
 # Note the implementation of this class may either be via FFI
 # or via native C bindings depending on your installation and
 # what version of ruby you are using.
-class MagicFFI
-  extend MagicHelpers
+class MagikkuFFI
+  extend MagikkuHelpers
 
   # Defines various flags that can be passed when creating a magic scan object
-  # using Magic.new or afterwards using Magic.flags=
+  # using Magikku.new or afterwards using Magikku.flags=
   module Flags
     # No flags
     NONE              = 0x000000
@@ -90,28 +90,28 @@ class MagicFFI
     FFI::Libmagic.magic_getpath(nil, 0)
   end
 
-  # A base class for other Magic error types
-  class MagicError < StandardError
+  # A base class for other Magikku error types
+  class MagikkuError < StandardError
   end
 
   # Raised when an error occurs during loading of a magic database.
-  class DbLoadError < MagicError
+  class DbLoadError < MagikkuError
   end
 
   # Raised when an unexpected fatal error occurs initializing libmagic
-  class InitFatal < MagicError
+  class InitFatal < MagikkuError
   end
 
   # Raised when an error occurs during compiling of a magic database.
-  class CompileError < MagicError
+  class CompileError < MagikkuError
   end
 
-  # Raised when an error occurs when setting flags on a Magic object.
-  class FlagError < MagicError
+  # Raised when an error occurs when setting flags on a Magikku object.
+  class FlagError < MagikkuError
   end
 
-  # Raised when an error occurs when setting flags on a Magic object.
-  class ClosedError < MagicError
+  # Raised when an error occurs when setting flags on a Magikku object.
+  class ClosedError < MagikkuError
   end
 
   # Initializes a new libmagic data scanner
@@ -120,7 +120,7 @@ class MagicFFI
   #   A hash of parameters or nil for defaults.
   #
   # @option params [Fixnum,nil] :flags
-  #   Optional flags to magic (see MagicFFI::Flags). 
+  #   Optional flags to magic (see MagikkuFFI::Flags). 
   #   The flag values should be 'or'ed to gether with '|'. 
   #   Default: NONE
   #
@@ -128,7 +128,7 @@ class MagicFFI
   #   Optional magicfile databases or un-compiled magic files.
   #   Default: the default system magic.mgc file.
   #
-  # @see See MagicFFI::Flags and libmagic(3) manpage
+  # @see See MagikkuFFI::Flags and libmagic(3) manpage
   # @see dbload()
   def initialize(param = nil)
     param ||= {}
@@ -210,7 +210,7 @@ class MagicFFI
   # Sets flags for the magic analyzer handle.
   #
   # @param flags
-  #   Flags to to set for magic. See MagicFFI::Flags and libmagic(3) manpage. 
+  #   Flags to to set for magic. See MagikkuFFI::Flags and libmagic(3) manpage. 
   #   The flag values should be 'or'ed together with '|'. 
   #   Using 0 will clear all flags.
   def flags=(flags)

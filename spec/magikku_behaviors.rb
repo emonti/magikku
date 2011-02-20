@@ -1,6 +1,6 @@
 require 'tmpdir'
 
-shared_examples_for "Magic compiling interface" do
+shared_examples_for "Magikku compiling interface" do
 
   context "Initializing" do
     it "should initialize cleanly without arguments" do
