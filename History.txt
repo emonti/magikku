@@ -1,2 +1,5 @@
-== 1.0.0 02/22/2011
+== 1.0.1 02/21/2011
+* Fixed gem build to ensure that C extension is compiled when possible.
+
+== 1.0.0 02/20/2011
 * Initial release version

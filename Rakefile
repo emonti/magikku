@@ -13,7 +13,10 @@ begin
     gem.add_development_dependency "ffi", ">= 0.5.0"
     gem.add_development_dependency "rspec", ">= 1.2.9"
 
-    gem.extra_rdoc_files += Dir["ext/**/*.c"]
+    if RUBY_PLATFORM !~ /java/
+      gem.extensions = FileList['ext/**/extconf.rb']
+      gem.extra_rdoc_files += FileList['ext/**/*.c']
+    end
   end
   Jeweler::GemcutterTasks.new
 rescue LoadError
