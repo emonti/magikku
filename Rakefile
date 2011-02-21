@@ -12,6 +12,8 @@ begin
     gem.authors = ["Eric Monti"]
     gem.add_development_dependency "ffi", ">= 0.5.0"
     gem.add_development_dependency "rspec", ">= 1.2.9"
+
+    gem.extra_rdoc_files += Dir["ext/**/*.c"]
   end
   Jeweler::GemcutterTasks.new
 rescue LoadError
